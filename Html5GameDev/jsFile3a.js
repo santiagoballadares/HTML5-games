@@ -284,8 +284,11 @@ var TheWorld = {
 
 $(document).ready(function() {
 	var context = $("#game_canvas")[0].getContext("2d");
-	var player = new ConstrPlayer("images/LinkFront.gif", 200, -200);
+	var player = new ConstrPlayer("images/LinkFront.gif", 200, 200);
 
+	// Put the player in the world:
+	TheWorld.addForegroundObject(player);
+	
 	// Make some background objects:
 	TheWorld.addBackgroundObject(new Mountain(0, -550, 100, 120));
 	TheWorld.addBackgroundObject(new Mountain(-30, -550, 90, 100));
@@ -308,11 +311,8 @@ $(document).ready(function() {
 	TheWorld.addBackgroundObject(new Tree(140, 40, 70, 10, 40));
 	TheWorld.addBackgroundObject(new Tree(200, -50, 70, 17, 60));
 	
-	TheWorld.addBackgroundObject(new Lake(280, 300, 100));
+	TheWorld.addBackgroundObject(new Lake(100, 600, 100));
 
-	// Put the player in the world:
-	TheWorld.addForegroundObject(player);
-	
 	TheWorld.draw(context);
 
 	// Keydown sets Timer
