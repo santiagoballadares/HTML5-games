@@ -180,6 +180,7 @@ ConstrPlayer.prototype = {
 		}
 		this.x += dx;
 		this.y += dy;
+		TheWorld.scrollIfNeeded(this);
 	},
 
 	idle: function() {
