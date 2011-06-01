@@ -6,6 +6,9 @@ const SPACE_BAR = 32;
 const SKY_COLOR = "#1F1F1F";
 const GROUND_COLOR = "#1A3300";
 
+const VOLOCITY = 0.5;
+const REDRAW_INTERVAL = 25;
+
 // Global variables
 var leftArrowDown = false;
 var rightArrowDown = false;
@@ -70,7 +73,7 @@ Cannon.prototype = {
 	},
 	
 	fire: function() {
-	
+		var laser = new CannonLaser(this.x+this.width/2,this.y);
 	},
 	
 	destroyed: function() {
@@ -78,6 +81,50 @@ Cannon.prototype = {
 			this.lives -= 1;
 		}
 	}
+};
+
+function CannonLaser(x, y) {
+  this.width = 3;
+  this.height = 10;
+
+  this.x = x;
+  this.y = y;
+
+  this.vx = 0;
+  this.vy = 0;
+
+  this.color = "#000000";
+}
+CannonLaser.prototype = {
+  update: function(elapsedMs) {
+    this.x += this.vx * elapsedMs / REDRAW_INTERVAL;
+    this.y += this.vy * elapsedMs / REDRAW_INTERVAL;
+
+    this.vy += VOLOCITY * elapsedMs / REDRAW_INTERVAL;
+  },
+
+  draw: function(ctx) {
+    ctx.fillStyle = this.color;
+    ctx.fillRect(this.left, this.top, this.width, this.height);
+    ctx.strokeStyle = "black";
+    ctx.strokeRect(this.left, this.top, this.width, this.height);
+  },
+
+  get top() {
+    return this.y - this.height;
+  },
+
+  get bottom() {
+    return this.y;
+  },
+
+  get left() {
+    return this.x;
+  },
+
+  get right() {
+    return this.x + this.width;
+  }
 };
 
 // Alien object & prototype
@@ -156,12 +203,16 @@ var TheWorld = {
 	canvasHeight: 450,
 	groundLevel: 425,
 
-	player: [],
+	gameIsOver: false,
+	
+	totalMs: 0,
+	
+	player: null,
 	aliens: [],
 	barriers: [],
 
 	addPlayerObject: function(obj) {
-		this.player.push(obj);
+		this.player = obj;
 	},
 	
 	addAlienObject: function(obj) {
@@ -195,7 +246,7 @@ var TheWorld = {
 		
 		var i;
 		// draw player's laser cannon
-		this.drawObject(this.player[0], ctx);
+		this.drawObject(this.player, ctx);
 		// draw all the aliens objects
 		for (i=0; i<this.aliens.length; i++) {
 			this.drawObject(this.aliens[i], ctx);
@@ -204,6 +255,12 @@ var TheWorld = {
 		for (i=0; i<this.barriers.length; i++) {
 			this.drawObject(this.barriers[i], ctx);
 		}
+	},
+	
+	endGame: function() {
+		this.gameIsOver = true;
+		// Show final message:
+		$("#info").html("GAME OVER - Reload to play again.");
 	}
 };
 
