@@ -1,22 +1,27 @@
 // Constants
-const LEFT_ARROW = 37;
-const RIGHT_ARROW = 39;
-const SPACE_BAR = 32;
+const LEFT_ARROW = 37;		// move left
+const RIGHT_ARROW = 39;		// move right
+const SPACE_BAR = 32;		// fire
 
 const SKY_COLOR = "#1F1F1F";
 const GROUND_COLOR = "#1A3300";
 
-const VOLOCITY = 0.5;
+const CANNON_MOV = 5;
+const ALIENS_XMOV = 3;
+const ALIENS_YMOV = 10;
+
+const VELOCITY = -0.5;
 const REDRAW_INTERVAL = 25;
 
 // Global variables
 var leftArrowDown = false;
 var rightArrowDown = false;
 var spaceBarDown = false;
-var Hflag = "GO_RIGHT";
-var Vflag = "STAY";
 
-// Laser Cannon object & prototype
+var hFlag = "GO_RIGHT";
+var vFlag = "STAY";
+
+// Cannon object & prototype
 function Cannon(x, y, lives, filename) {
 	this.x = x;
 	this.y = y;
@@ -46,11 +51,11 @@ Cannon.prototype = {
 	},
 	  
 	getTop: function() {
-		return this.y;
+		return this.y - this.height;
 	},
 	
 	getBottom: function() {
-		return this.y + this.height;
+		return this.y;
 	},
 	
 	getLives: function() {
@@ -73,18 +78,27 @@ Cannon.prototype = {
 	},
 	
 	fire: function() {
-		var laser = new CannonLaser(this.x+this.width/2,this.y);
+		// creates new lasers - one at a time
+		if(TheWorld.lasers.length < 1) {
+			TheWorld.addLaserObject(new Laser(this.getLeft()+this.width/2, this.getBottom()));
+		}
 	},
 	
 	destroyed: function() {
-		if (this.lives > 0) {
+		if (this.getLives() > 0) {
 			this.lives -= 1;
 		}
+	},
+	
+	isTouching: function(other) {
+		return (this.getRight() >= other.getLeft() && other.getRight() >= this.getLeft() &&
+				this.getBottom() >= other.getTop() && other.getBottom() >= this.getTop());
 	}
 };
 
-function CannonLaser(x, y) {
-  this.width = 3;
+// Laser object & prototype
+function Laser(x, y) {
+  this.width = 1;
   this.height = 10;
 
   this.x = x;
@@ -93,38 +107,36 @@ function CannonLaser(x, y) {
   this.vx = 0;
   this.vy = 0;
 
-  this.color = "#000000";
+  this.color = "#FF0000";
 }
-CannonLaser.prototype = {
-  update: function(elapsedMs) {
-    this.x += this.vx * elapsedMs / REDRAW_INTERVAL;
-    this.y += this.vy * elapsedMs / REDRAW_INTERVAL;
+Laser.prototype = {
+	getLeft: function() {
+		return this.x;
+	},
 
-    this.vy += VOLOCITY * elapsedMs / REDRAW_INTERVAL;
-  },
+	getRight: function() {
+		return this.x + this.width;
+	},
+	  
+	getTop: function() {
+		return this.y - this.height;
+	},
+	
+	getBottom: function() {
+		return this.y;
+	},
+	
+	update: function(elapsedMs) {
+		this.x += this.vx * elapsedMs / REDRAW_INTERVAL;
+		this.y += this.vy * elapsedMs / REDRAW_INTERVAL;
+		
+		this.vy += VELOCITY * elapsedMs / REDRAW_INTERVAL;
+	},
 
-  draw: function(ctx) {
-    ctx.fillStyle = this.color;
-    ctx.fillRect(this.left, this.top, this.width, this.height);
-    ctx.strokeStyle = "black";
-    ctx.strokeRect(this.left, this.top, this.width, this.height);
-  },
-
-  get top() {
-    return this.y - this.height;
-  },
-
-  get bottom() {
-    return this.y;
-  },
-
-  get left() {
-    return this.x;
-  },
-
-  get right() {
-    return this.x + this.width;
-  }
+	draw: function(ctx) {
+		ctx.fillStyle = this.color;
+		ctx.fillRect(this.getLeft(), this.getTop(), this.width, this.height);
+	}
 };
 
 // Alien object & prototype
@@ -136,6 +148,7 @@ function Alien(x, y, rank, destroyed, filename) {
 	this.init(filename);
 	this.width = 22;
 	this.height = 16;
+	this.animationFrame = 0;
 }
 Alien.prototype = {
 	imgLoaded: false,
@@ -158,11 +171,11 @@ Alien.prototype = {
 	},
 	  
 	getTop: function() {
-		return this.y;
+		return this.y - this.height;
 	},
 	
 	getBottom: function() {
-		return this.y + this.height;
+		return this.y;
 	},
 	
 	getRank: function() {
@@ -176,6 +189,8 @@ Alien.prototype = {
 	draw: function(ctx) {
 		if (this.imgLoaded) {
 			if (this.destroyed == 0) {
+				var spriteOffsetX = 22 * this.animationFrame;
+				// ctx.drawImage(this.img, spriteOffsetX, 0, 22, 16, this.x, this.y, 22, 16);
 				ctx.drawImage(this.img, this.x, this.y, this.width, this.height);
 			}
 		}
@@ -186,16 +201,23 @@ Alien.prototype = {
 	},
 
 	move: function(dx, dy) {
+		// this.animationFrame = (this.animationFrame + 1) % 2;
 		this.x += dx;
 		this.y += dy;
 	},
 	
 	fire: function() {
 	
+	},
+	
+	isTouching: function(other) {
+		return (this.getRight() >= other.getLeft() && other.getRight() >= this.getLeft() &&
+				this.getBottom() >= other.getTop() && other.getBottom() >= this.getTop());
 	}
 };
 
 // Barrier object & prototype
+// TO DO
 
 // The World
 var TheWorld = {
@@ -207,12 +229,17 @@ var TheWorld = {
 	
 	totalMs: 0,
 	
-	player: null,
-	aliens: [],
-	barriers: [],
+	player: null,		// player's cannon object
+	lasers: [],			// list of cannon's lasers on canvas
+	aliens: [],			// list of aliens on canvas
+	barriers: [],		// list of barriers on canvas
 
 	addPlayerObject: function(obj) {
 		this.player = obj;
+	},
+	
+	addLaserObject: function(obj) {
+		this.lasers.push(obj);
 	},
 	
 	addAlienObject: function(obj) {
@@ -227,7 +254,40 @@ var TheWorld = {
 		obj.draw(ctx);
 	},
 
-	draw: function(ctx) {
+	updateAll: function(elapsed) {
+		var i, laser, alien;
+		
+		// keep track of total survival time
+		this.totalMs += elapsed;
+
+		// update lasers
+		for (i=0; i<this.lasers.length; i++) {
+			laser = this.lasers[i];
+			laser.update(elapsed);
+		}
+
+		// check for collisions - end the game if you touch something
+		for (i=0; i<this.aliens.length; i++) {
+			alien = this.aliens[i];
+			if (this.player.isTouching(alien)) {
+				this.endGame();
+			}
+		}
+
+		// remove lasers that have gone off top of canvas
+		var stillOnScreen = [];
+		for (i=0; i<this.lasers.length; i++) {
+			laser = this.lasers[i];
+			if (laser.getBottom() > 0) {
+				stillOnScreen.push(laser);
+			}
+		}
+		this.lasers = stillOnScreen;
+	},
+	
+	drawAll: function(ctx) {
+		ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+		
 		// Ground
 		ctx.fillStyle = GROUND_COLOR;
 		ctx.fillRect(0, this.groundLevel, this.canvasWidth, this.canvasHeight);
@@ -244,14 +304,19 @@ var TheWorld = {
 		ctx.fillStyle = SKY_COLOR;
 		ctx.fillRect(0, 0, this.canvasWidth, this.groundLevel);
 		
+		// Draw all objects
 		var i;
-		// draw player's laser cannon
+		// player's cannon
 		this.drawObject(this.player, ctx);
-		// draw all the aliens objects
+		// cannon's lasers
+		for (i=0; i<this.lasers.length; i++) {
+			this.drawObject(this.lasers[i], ctx);
+		}
+		// all alien objects
 		for (i=0; i<this.aliens.length; i++) {
 			this.drawObject(this.aliens[i], ctx);
 		}
-		// Draw all the barriers objects
+		// all barrier objects
 		for (i=0; i<this.barriers.length; i++) {
 			this.drawObject(this.barriers[i], ctx);
 		}
@@ -264,56 +329,10 @@ var TheWorld = {
 	}
 };
 
-// Interval that controls the aliens' movement across the canvas
-var m = setInterval(function() {
-	var i;
-	
-	// Check the direction of the movement of the aliens based on the sides of the canvas
-	for(i=0; i<TheWorld.aliens.length; i++) {
-		if(TheWorld.aliens[i].x + TheWorld.aliens[i].width <= TheWorld.canvasWidth && 
-		   TheWorld.aliens[i].x + TheWorld.aliens[i].width >= TheWorld.canvasWidth - 5) {
-			Hflag = "GO_LEFT";
-			Vflag = "GO_DOWN";
-			break;
-		}
-		else if(TheWorld.aliens[i].x >= 0 && 
-		        TheWorld.aliens[i].x <= 5) {
-			Hflag = "GO_RIGHT";
-			Vflag = "GO_DOWN";
-			break;
-		}
-	}
-	
-	// Move the aliens down once they reached either far left or far right side of the canvas
-	if(Vflag == "GO_DOWN") {
-		for(i=0; i<TheWorld.aliens.length; i++) {
-			if(TheWorld.aliens[i].destroyed == 0) {
-				TheWorld.aliens[i].move(0, 10);
-			}
-		}
-		Vflag = "STAY";
-	}
-	
-	//Move the aliens either to the left or right side of the canvas
-	if(Hflag == "GO_RIGHT") {
-		for(i=0; i<TheWorld.aliens.length; i++) {
-			if(TheWorld.aliens[i].destroyed == 0) {
-				TheWorld.aliens[i].move(3, 0);
-			}
-		}
-	}
-	else if(Hflag == "GO_LEFT") {
-		for(i=0; i<TheWorld.aliens.length; i++) {
-			if(TheWorld.aliens[i].destroyed == 0) {
-				TheWorld.aliens[i].move(-3, 0);
-			}
-		}
-	}
-}, 50);
-
 // Main event whose function controls the game
 $(document).ready(function() {
 	var context = $("#game_canvas")[0].getContext("2d");
+	var now = Date.now();
 	var cannon = new Cannon(100, TheWorld.groundLevel-22, 3, "images/cannon.png");
 
 	// Put the player in the world:
@@ -344,10 +363,67 @@ $(document).ready(function() {
 		}
 	}
 	
-	TheWorld.aliens[1].destroyed = 1;
-	
-	TheWorld.draw(context);
-	
+	//TheWorld.aliens[1].destroyed = 1;
+	//TheWorld.drawAll(context);
+
+	var worldInterval = setInterval(function() {
+		if (!TheWorld.gameIsOver) {
+			var elapsed = Date.now() - now;
+			now = Date.now();
+			TheWorld.updateAll(elapsed);
+			TheWorld.drawAll(context);
+		}
+	}, REDRAW_INTERVAL);
+
+	// Interval that controls the aliens' movement across the canvas
+	var aliensMov = setInterval(function() {
+		if (!TheWorld.gameIsOver) {
+			var i;
+			
+			// Check the direction of the movement of the aliens based on the sides of the canvas
+			for(i=0; i<TheWorld.aliens.length; i++) {
+				if(TheWorld.aliens[i].getRight() <= TheWorld.canvasWidth && 
+				   TheWorld.aliens[i].getRight() >= TheWorld.canvasWidth - 5) {
+					hFlag = "GO_LEFT";
+					vFlag = "GO_DOWN";
+					break;
+				}
+				else if(TheWorld.aliens[i].getLeft() >= 0 && 
+						TheWorld.aliens[i].getLeft() <= 5) {
+					hFlag = "GO_RIGHT";
+					vFlag = "GO_DOWN";
+					break;
+				}
+			}
+			
+			// Move the aliens down once they reached either far left or far right side of the canvas
+			if(vFlag == "GO_DOWN") {
+				for(i=0; i<TheWorld.aliens.length; i++) {
+					if(TheWorld.aliens[i].getDestroyed() == 0) {
+						TheWorld.aliens[i].move(0, ALIENS_YMOV);
+					}
+				}
+				vFlag = "STAY";
+			}
+			
+			//Move the aliens either to the left or right side of the canvas
+			if(hFlag == "GO_RIGHT") {
+				for(i=0; i<TheWorld.aliens.length; i++) {
+					if(TheWorld.aliens[i].getDestroyed() == 0) {
+						TheWorld.aliens[i].move(ALIENS_XMOV, 0);
+					}
+				}
+			}
+			else if(hFlag == "GO_LEFT") {
+				for(i=0; i<TheWorld.aliens.length; i++) {
+					if(TheWorld.aliens[i].getDestroyed() == 0) {
+						TheWorld.aliens[i].move(-ALIENS_XMOV, 0);
+					}
+				}
+			}
+		}
+	}, 50);
+
 	// Keydown event
 	$(document).bind("keydown", function(evt) {
 		if (evt.which == LEFT_ARROW) {
@@ -376,15 +452,15 @@ $(document).ready(function() {
 
 	// Interval event of the window which controls the players laser cannon movement through the left and right arrow keys
 	window.setInterval(function() {
-		TheWorld.draw(context);
+		TheWorld.drawAll(context);
 		if (leftArrowDown && !rightArrowDown) {;
-			(cannon.x >= 5) ? cannon.move(-5, 0) : 0;
+			(cannon.getLeft() >= CANNON_MOV) ? cannon.move(-CANNON_MOV, 0) : 0;
 		}
 		if (rightArrowDown && !leftArrowDown) {
-			(cannon.x <= TheWorld.canvasWidth-cannon.width-5) ? cannon.move(5, 0) : 0;
+			(cannon.getRight() <= TheWorld.canvasWidth-CANNON_MOV) ? cannon.move(CANNON_MOV, 0) : 0;
 		}
 		if (spaceBarDown) {
-			cannon.fire;
+			cannon.fire();
 		}
 	}, 1);
 });
