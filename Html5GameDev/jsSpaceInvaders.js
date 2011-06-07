@@ -1,3 +1,7 @@
+// @Description: Space Invaders.- Destroy endless waves of aliens while avoiding being destroyed.
+// @Autor: Santiago Balladares
+// @Date: 01/06/2011 16:16
+
 // Constants
 const LEFT_ARROW = 37;		// move left
 const RIGHT_ARROW = 39;		// move right
