@@ -141,11 +141,11 @@ Laser.prototype = {
 };
 
 // Alien object & prototype
-function Alien(x, y, rank, destroyed, filename) {
+function Alien(x, y, rank, filename) {
+	this.destroyed = false;
 	this.x = x;
 	this.y = y;
 	this.rank = rank;
-	this.destroyed = destroyed;		// 0: false; 1: true
 	this.init(filename);
 	this.width = 22;
 	this.height = 16;
@@ -182,18 +182,12 @@ Alien.prototype = {
 	getRank: function() {
 		return this.rank;
 	},
-	
-	getDestroyed: function() {
-		return this.destroyed;
-	},
 
 	draw: function(ctx) {
-		if (this.imgLoaded) {
-			if (this.destroyed == 0) {
-				//var spriteOffsetX = 22 * this.animationFrame;
-				// ctx.drawImage(this.img, spriteOffsetX, 0, 22, 16, this.x, this.y, 22, 16);
-				ctx.drawImage(this.img, this.x, this.y, this.width, this.height);
-			}
+		if (this.imgLoaded && !this.destroyed) {
+			//var spriteOffsetX = 22 * this.animationFrame;
+			// ctx.drawImage(this.img, spriteOffsetX, 0, 22, 16, this.x, this.y, 22, 16);
+			ctx.drawImage(this.img, this.x, this.y, this.width, this.height);
 		}
 	},
 
@@ -214,6 +208,10 @@ Alien.prototype = {
 	isTouching: function(other) {
 		return (this.getRight() >= other.getLeft() && other.getRight() >= this.getLeft() &&
 				this.getBottom() >= other.getTop() && other.getBottom() >= this.getTop());
+	},
+	
+	destroy: function() {
+		this.destroyed = true;
 	}
 };
 
@@ -288,12 +286,22 @@ var TheWorld = {
 		// check for collisions - hide any alien touched by a laser
 		for (i=0; i<this.aliens.length; i++) {
 			for (j=0; j<this.lasers.length; j++) {
-				if (this.aliens[i].isTouching(this.lasers[j]) && this.aliens[i].getDestroyed()!=1) {
-					this.aliens[i].destroyed = 1;
+				if (this.aliens[i].isTouching(this.lasers[j])) {
+					this.aliens[i].destroy();
 					this.lasers[j].move(0, -this.canvasHeight);
 				}
 			}
 		}
+		
+		// remove destroyed aliens from the "alines" array
+		stillOnScreen = [];
+		for (i=0; i<this.aliens.length; i++) {
+			alien = this.aliens[i];
+			if (!alien.destroyed) {
+				stillOnScreen.push(alien);
+			}
+		}
+		this.aliens = stillOnScreen;
 	},
 	
 	drawAll: function(ctx) {
@@ -370,11 +378,9 @@ $(document).ready(function() {
 			break;
 		}
 		for (j=0; j<11; j++) {
-			TheWorld.addAlienObject(new Alien(100 + j*33, 50 + i*33, 3, 0, filename));
+			TheWorld.addAlienObject(new Alien(100 + j*33, 50 + i*33, 3, filename));
 		}
 	}
-	
-	//TheWorld.aliens[1].destroyed = 1;
 
 	// Interval event for The World
 	window.setInterval(function() {
@@ -410,9 +416,7 @@ $(document).ready(function() {
 			// Move the aliens down once they reached either far left or far right side of the canvas
 			if (vFlag == "GO_DOWN") {
 				for (i=0; i<TheWorld.aliens.length; i++) {
-					if (TheWorld.aliens[i].getDestroyed() == 0) {
-						TheWorld.aliens[i].move(0, ALIENS_YMOV);
-					}
+					TheWorld.aliens[i].move(0, ALIENS_YMOV);
 				}
 				vFlag = "STAY";
 			}
@@ -420,16 +424,12 @@ $(document).ready(function() {
 			//Move the aliens either to the left or right side of the canvas
 			if (hFlag == "GO_RIGHT") {
 				for (i=0; i<TheWorld.aliens.length; i++) {
-					if (TheWorld.aliens[i].getDestroyed() == 0) {
-						TheWorld.aliens[i].move(ALIENS_XMOV, 0);
-					}
+					TheWorld.aliens[i].move(ALIENS_XMOV, 0);
 				}
 			}
 			else if (hFlag == "GO_LEFT") {
 				for (i=0; i<TheWorld.aliens.length; i++) {
-					if (TheWorld.aliens[i].getDestroyed() == 0) {
-						TheWorld.aliens[i].move(-ALIENS_XMOV, 0);
-					}
+					TheWorld.aliens[i].move(-ALIENS_XMOV, 0);
 				}
 			}
 		}
