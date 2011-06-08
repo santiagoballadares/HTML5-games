@@ -1,4 +1,4 @@
-// @Description: Implements Physics - shoots a proyectile
+// @Description: Implements Physics - shoots a bullet with increasing velocity and throws a grenade with x & y vectors for velocity and gravity
 // @Autor: Santiago Balladares
 // @Date: 07/06/2011 20:34
 
@@ -12,7 +12,7 @@ const GOING_RIGHT = 0;
 const GOING_LEFT = 1;
 const STAND_STILL = 2;
 
-const BULLET_VEL = 3;
+const BULLET_VEL = 5;
 
 const GRAVITY = 0.5;
 const GRENADE_VEL = 1;
@@ -86,13 +86,13 @@ Player.prototype = {
 	
 	fire: function() {
 		if(TheWorld.bullets.length < 1) {
-			TheWorld.bullets.push(new Bullet(this.getRight() - 10, this.y + 18, "images/bullet.png"));
+			TheWorld.bullets.push(new Bullet(this.getRight() - 10, this.y + 20, "images/bullet.png"));
 		}
 	},
 	
 	throwGrenade: function() {
 		if(TheWorld.grenades.length < 1) {
-			TheWorld.grenades.push(new Grenade(this.getRight() - 10, this.y, "images/grenade.png"));
+			TheWorld.grenades.push(new Grenade(this.getRight() - 10, this.y + 10, "images/grenade.png"));
 		}
 	}
 };
@@ -100,9 +100,9 @@ Player.prototype = {
 // Bullet object & prototype
 function Bullet(x, y, filename) {
 	this.x = x;
-	this.y = y;
-	this.width = 14;
-	this.height = 8;
+	this.y = y - 4;
+	this.width = 7;
+	this.height = 4;
 	this.init(filename);
 	this.vx = 0;
 	this.vy = 0;
@@ -146,13 +146,22 @@ Bullet.prototype = {
 		this.y += this.vy * elapsedMs / REDRAW_INTERVAL;
 
 		this.vx += BULLET_VEL * elapsedMs / REDRAW_INTERVAL;
+	},
+	move: function(dx, dy) {
+		this.x += dx;
+		this.y += dy;
+	},
+	
+	isTouching: function(other) {
+		return (this.getRight() >= other.getLeft() && other.getRight() >= this.getLeft() &&
+				this.getBottom() <= other.getTop() && other.getBottom() <= this.getTop());
 	}
 };
 
 // Grenade object & prototype
 function Grenade(x, y, filename) {
 	this.x = x;
-	this.y = y;
+	this.y = y - 19;
 	this.width = 19;
 	this.height = 19;
 	this.init(filename);
@@ -218,6 +227,7 @@ Grenade.prototype = {
 
 // Enemy Object & Prototype
 function Enemy(x, y, filename) {
+	this.alive = true;
 	this.x = x;
 	this.y = y - 62;
 	this.width = 73;
@@ -244,9 +254,17 @@ Enemy.prototype = {
 	getRight: function() {
 		return this.x + this.width;
 	},
-	  
+	
+	getTop: function() {
+		return this.y + this.height;
+	},
+	
+	getBottom: function() {
+		return this.y;
+	},
+	
 	draw: function(ctx) {
-		if (this.imgLoaded) {
+		if (this.imgLoaded && this.alive) {
 			var spriteOffsetX = 73 * this.animationFrame;
 			ctx.drawImage(this.img, spriteOffsetX, 0, 73, 62, this.x, this.y, 73, 62);
 		}
@@ -258,6 +276,10 @@ Enemy.prototype = {
 
 	update: function() {
 		this.animationFrame = (this.animationFrame + 1) % 10;
+	},
+	
+	killed: function() {
+		this.alive = false;
 	}
 };
 
@@ -265,7 +287,7 @@ Enemy.prototype = {
 var TheWorld = {
 	canvasWidth: 800,
 	canvasHeight: 450,
-	groundLevel: 370,
+	groundLevel: 400,
 	
 	player: null,
 	bullets: [],
@@ -362,9 +384,9 @@ var TheWorld = {
 	},
 
 	updateAll: function(elapsed) {
-		var i, bullet, grenade;
+		var i, j, bullet, grenade, enemy;
 		
-		// keep track of total survival time
+		// keep track of time
 		this.totalMs += elapsed;
 
 		// update bullets
@@ -403,6 +425,26 @@ var TheWorld = {
 		for (i=0;i<this.enemies.length; i++) {
 			this.enemies[i].update();
 		}
+
+		// check for collisions - hide enemies and bullets
+		for (i=0; i<this.bullets.length; i++) {
+			for (j=0; j<this.enemies.length; j++) {
+				if (this.bullets[i].isTouching(this.enemies[j])) {
+					this.bullets[i].move(this.canvasWidth, 100);
+					this.enemies[j].killed();
+				}
+			}
+		}
+		
+		// remove killed enemies from the "enemies" array
+		stillOnScreen = [];
+		for (i=0; i<this.enemies.length; i++) {
+			enemy = this.enemies[i];
+			if (enemy.alive) {
+				stillOnScreen.push(enemy);
+			}
+		}
+		this.enemies = stillOnScreen;
 	},
 	
 	drawAll: function(ctx) {
@@ -438,9 +480,9 @@ $(document).ready(function() {
 	TheWorld.player = player;
 
 	// Add some enemy to the world:
-	TheWorld.enemies.push(new Enemy(320, TheWorld.groundLevel, "images/enemy.png"));
-	TheWorld.enemies.push(new Enemy(560, TheWorld.groundLevel, "images/enemy.png"));
-	TheWorld.enemies.push(new Enemy(660, TheWorld.groundLevel, "images/enemy.png"));
+	TheWorld.enemies.push(new Enemy(300, TheWorld.groundLevel, "images/enemy.png"));
+	TheWorld.enemies.push(new Enemy(500, TheWorld.groundLevel, "images/enemy.png"));
+	TheWorld.enemies.push(new Enemy(700, TheWorld.groundLevel, "images/enemy.png"));
 	
 	window.setInterval(function() {
 		var elapsed = Date.now() - now;
