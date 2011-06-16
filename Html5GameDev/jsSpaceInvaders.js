@@ -19,6 +19,11 @@ const CANNON_REDRAW_INTERVAL = 1;
 const ALIENS_REDRAW_INTERVAL = 50;
 const THEWORLD_REDRAW_INTERVAL = 25;
 
+const BARRIER01 = "images/barrier1.png";
+const BARRIER02 = "images/barrier2.png";
+const BARRIER03 = "images/barrier3.png";
+const BARRIER04 = "images/barrier4.png";
+
 // Global variables
 var leftArrowDown = false;
 var rightArrowDown = false;
@@ -26,6 +31,7 @@ var spaceBarDown = false;
 
 var hFlag = "GO_RIGHT";
 var vFlag = "STAY";
+var aliens_xmov_inc = 0;
 
 // Cannon object & prototype
 function Cannon(x, y, lives, filename) {
@@ -216,7 +222,85 @@ Alien.prototype = {
 };
 
 // Barrier object & prototype
-// TO DO
+function Barrier(x, y) {
+	this.x = x;
+	this.y = y;
+	this.width = 15;
+	this.height = 15;
+	this.health = 400;
+	this.destroyed = false;
+	this.init(BARRIER01);
+}
+Barrier.prototype = {
+	imgLoaded: false,
+
+	init: function(filename) {
+		var self = this;
+		this.img = new Image();
+		this.img.onload = function() {
+			self.imgLoaded = true;
+		}
+		this.img.src = filename;
+	},
+
+	getLeft: function() {
+		return this.x;
+	},
+
+	getRight: function() {
+		return this.x + this.width;
+	},
+	  
+	getTop: function() {
+		return this.y - this.height;
+	},
+	
+	getBottom: function() {
+		return this.y;
+	},
+
+	draw: function(ctx) {
+		if (this.imgLoaded && !this.destroyed) {
+			ctx.drawImage(this.img, this.x, this.y, this.width, this.height);
+		}
+	},
+
+	erase: function(ctx) {
+		ctx.clearRect(this.x, this.y, this.width, this.height);
+	},
+	
+	isTouching: function(other) {
+		return (this.getRight() >= other.getLeft() && other.getRight() >= this.getLeft() &&
+				this.getBottom() >= other.getTop() && other.getBottom() >= this.getTop());
+	},
+	
+	receiveDamage: function() {
+		if (this.health > 0) {
+			this.health -= 100;
+			switch (this.health) {
+				case 300:
+					this.img.src = BARRIER02;
+				break;
+				
+				case 200:
+					this.img.src = BARRIER03;
+				break;
+				
+				case 100:
+					this.img.src = BARRIER04;
+				break;
+			}
+		}
+		else if (this.health == 0) {
+			this.destroy();
+		}
+	},
+	
+	destroy: function() {
+		this.destroyed = true;
+	}
+};
+
 
 // The World
 var TheWorld = {
@@ -254,7 +338,7 @@ var TheWorld = {
 	},
 
 	updateAll: function(elapsed) {
-		var i, j, laser, alien;
+		var i, j, laser, alien, barrier;
 		
 		// keep track of total survival time
 		this.totalMs += elapsed;
@@ -302,6 +386,26 @@ var TheWorld = {
 			}
 		}
 		this.aliens = stillOnScreen;
+		
+		// check for collisions - barriers get damage if touched by a laser
+		for (i=0; i<this.barriers.length; i++) {
+			for (j=0; j<this.lasers.length; j++) {
+				if (this.barriers[i].isTouching(this.lasers[j])) {
+					this.barriers[i].receiveDamage();
+					this.lasers[j].move(0, -this.canvasHeight);
+				}
+			}
+		}
+		
+		// remove destroyed barriers from the "barriers" array
+		stillOnScreen = [];
+		for (i=0; i<this.barriers.length; i++) {
+			barrier = this.barriers[i];
+			if (!barrier.destroyed) {
+				stillOnScreen.push(barrier);
+			}
+		}
+		this.barriers = stillOnScreen;
 	},
 	
 	drawAll: function(ctx) {
@@ -352,13 +456,14 @@ var TheWorld = {
 $(document).ready(function() {
 	var context = $("#game_canvas")[0].getContext("2d");
 	var now = Date.now();
-	var cannon = new Cannon(100, TheWorld.groundLevel-22, 3, "images/cannon.png");
+	var cannon = new Cannon(70, TheWorld.groundLevel-22, 3, "images/cannon.png");
 
 	// Put the player in the world
 	TheWorld.addPlayerObject(cannon);
 	
-	var i, j, filename;
 	// Create some aliens objects
+	var i, j, filename;
+	
 	for (i=0; i<5; i++) {
 		switch (i) {
 			case 0:
@@ -382,6 +487,28 @@ $(document).ready(function() {
 		}
 	}
 
+	// Create the barriers
+	for (i=0; i<2; i++) {
+		for (j=0; j<4; j++) {
+			TheWorld.addBarrierObject(new Barrier(50+j*15, TheWorld.groundLevel-80 + i*15));
+		}
+	}
+	for (i=0; i<2; i++) {
+		for (j=0; j<4; j++) {
+			TheWorld.addBarrierObject(new Barrier(170+j*15, TheWorld.groundLevel-80 + i*15));
+		}
+	}
+	for (i=0; i<2; i++) {
+		for (j=0; j<4; j++) {
+			TheWorld.addBarrierObject(new Barrier(290+j*15, TheWorld.groundLevel-80 + i*15));
+		}
+	}
+	for (i=0; i<2; i++) {
+		for (j=0; j<4; j++) {
+			TheWorld.addBarrierObject(new Barrier(410+j*15, TheWorld.groundLevel-80 + i*15));
+		}
+	}
+	
 	// Interval event for The World
 	window.setInterval(function() {
 		if (!TheWorld.gameIsOver) {
@@ -400,13 +527,13 @@ $(document).ready(function() {
 			// Check the direction of the movement of the aliens based on the sides of the canvas
 			for (i=0; i<TheWorld.aliens.length; i++) {
 				if (TheWorld.aliens[i].getRight() <= TheWorld.canvasWidth && 
-				   TheWorld.aliens[i].getRight() >= TheWorld.canvasWidth - 5) {
+				   TheWorld.aliens[i].getRight() >= TheWorld.canvasWidth - ALIENS_XMOV-aliens_xmov_inc) {
 					hFlag = "GO_LEFT";
 					vFlag = "GO_DOWN";
 					break;
 				}
 				else if (TheWorld.aliens[i].getLeft() >= 0 && 
-						TheWorld.aliens[i].getLeft() <= 5) {
+						TheWorld.aliens[i].getLeft() <= ALIENS_XMOV+aliens_xmov_inc) {
 					hFlag = "GO_RIGHT";
 					vFlag = "GO_DOWN";
 					break;
@@ -419,17 +546,18 @@ $(document).ready(function() {
 					TheWorld.aliens[i].move(0, ALIENS_YMOV);
 				}
 				vFlag = "STAY";
+				aliens_xmov_inc += 0.1;
 			}
 			
 			//Move the aliens either to the left or right side of the canvas
 			if (hFlag == "GO_RIGHT") {
 				for (i=0; i<TheWorld.aliens.length; i++) {
-					TheWorld.aliens[i].move(ALIENS_XMOV, 0);
+					TheWorld.aliens[i].move(ALIENS_XMOV+aliens_xmov_inc, 0);
 				}
 			}
 			else if (hFlag == "GO_LEFT") {
 				for (i=0; i<TheWorld.aliens.length; i++) {
-					TheWorld.aliens[i].move(-ALIENS_XMOV, 0);
+					TheWorld.aliens[i].move(-ALIENS_XMOV-aliens_xmov_inc, 0);
 				}
 			}
 		}
