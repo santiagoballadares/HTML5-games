@@ -147,14 +147,14 @@ Laser.prototype = {
 };
 
 // Alien object & prototype
-function Alien(x, y, rank, filename) {
+function Alien(x, y, width, heigth, points, filename) {
 	this.destroyed = false;
 	this.x = x;
 	this.y = y;
-	this.rank = rank;
+	this.points = points;
 	this.init(filename);
-	this.width = 22;
-	this.height = 16;
+	this.width = width;
+	this.height = heigth;
 	this.animationFrame = 0;
 }
 Alien.prototype = {
@@ -185,8 +185,8 @@ Alien.prototype = {
 		return this.y;
 	},
 	
-	getRank: function() {
-		return this.rank;
+	getPoints: function() {
+		return this.points;
 	},
 
 	draw: function(ctx) {
@@ -310,15 +310,22 @@ var TheWorld = {
 
 	gameIsOver: false,
 	
+	score: 0,
+	
 	totalMs: 0,
 	
 	player: null,		// player's cannon object
+	playerLives: [],	// player's lives
 	lasers: [],			// list of cannon's lasers on canvas
 	aliens: [],			// list of aliens on canvas
 	barriers: [],		// list of barriers on canvas
 
 	addPlayerObject: function(obj) {
 		this.player = obj;
+	},
+	
+	addPlayerLivesObject: function(obj) {
+		this.playerLives.push(obj);
 	},
 	
 	addLaserObject: function(obj) {
@@ -337,9 +344,13 @@ var TheWorld = {
 		obj.draw(ctx);
 	},
 
-	updateAll: function(elapsed) {
+	updateAll: function(ctx, elapsed) {
+		// keep the score
+		ctx.fillStyle = "white";
+		ctx.fillText("Score: " + this.score, 50, 50);
+
 		var i, j, laser, alien, barrier;
-		
+
 		// keep track of total survival time
 		this.totalMs += elapsed;
 
@@ -367,10 +378,11 @@ var TheWorld = {
 		}
 		this.lasers = stillOnScreen;
 		
-		// check for collisions - hide any alien touched by a laser
+		// check for collisions - destroy any alien touched by a laser
 		for (i=0; i<this.aliens.length; i++) {
 			for (j=0; j<this.lasers.length; j++) {
 				if (this.aliens[i].isTouching(this.lasers[j])) {
+					this.score += this.aliens[i].getPoints();
 					this.aliens[i].destroy();
 					this.lasers[j].move(0, -this.canvasHeight);
 				}
@@ -409,6 +421,9 @@ var TheWorld = {
 	},
 	
 	drawAll: function(ctx) {
+		// Some variables
+		var i;
+		
 		ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
 		
 		// Ground
@@ -427,21 +442,33 @@ var TheWorld = {
 		ctx.fillStyle = SKY_COLOR;
 		ctx.fillRect(0, 0, this.canvasWidth, this.groundLevel);
 		
-		// Draw all objects
-		var i;
 		// player's cannon
 		this.drawObject(this.player, ctx);
+		
 		// cannon's lasers
 		for (i=0; i<this.lasers.length; i++) {
 			this.drawObject(this.lasers[i], ctx);
 		}
+		
 		// all alien objects
 		for (i=0; i<this.aliens.length; i++) {
 			this.drawObject(this.aliens[i], ctx);
 		}
+		
 		// all barrier objects
 		for (i=0; i<this.barriers.length; i++) {
 			this.drawObject(this.barriers[i], ctx);
+		}
+		
+		// The Score
+		ctx.font = "12pt Arial";
+		ctx.fillStyle = "white";
+		ctx.fillText("Score: " + this.score, 35, 25);
+		
+		// The Lives
+		ctx.fillText("Lives: " , 400, 25);
+		for (i=0; i<this.playerLives.length; i++) {
+			this.drawObject(this.playerLives[i], ctx);
 		}
 	},
 	
@@ -452,42 +479,63 @@ var TheWorld = {
 	}
 };
 
-// Main event whose function controls the game
-$(document).ready(function() {
-	var context = $("#game_canvas")[0].getContext("2d");
-	var now = Date.now();
-	var cannon = new Cannon(70, TheWorld.groundLevel-22, 3, "images/cannon.png");
+function createObjects(objCannon) {
+	// Some variables
+	var i, j, filename, width, heigth, points, dPos;
 
 	// Put the player in the world
-	TheWorld.addPlayerObject(cannon);
+	TheWorld.addPlayerObject(objCannon);
 	
-	// Create some aliens objects
-	var i, j, filename;
+	// Creates cannon objects that shows how many lives the player has
+	for (i=0; i<3; i++) {
+		TheWorld.addPlayerLivesObject(new Cannon(450 + i * 25, 5, 3, "images/cannon.png"));
+	}
 	
+	// Creates some aliens objects
 	for (i=0; i<5; i++) {
 		switch (i) {
 			case 0:
 				filename = "images/alien3.png";
+				width = 16;
+				heigth = 16;
+				dPos = 4;
+				points = 40;
 			break;
 			case 1:
 				filename = "images/alien2.png";
+				width = 22;
+				heigth = 16;
+				dPos = 1;
+				points = 20;
 			break;
 			case 2:
 				filename = "images/alien2.png";
+				width = 22;
+				heigth = 16;
+				dPos = 1;
+				points = 20;
 			break;
 			case 3:
 				filename = "images/alien1.png";
+				width = 24;
+				heigth = 16;
+				dPos = 0;
+				points = 10;
 			break;
 			case 4:
 				filename = "images/alien1.png";
+				width = 24;
+				heigth = 16;
+				dPos = 0;
+				points = 10;
 			break;
 		}
 		for (j=0; j<11; j++) {
-			TheWorld.addAlienObject(new Alien(100 + j*33, 50 + i*33, 3, filename));
+			TheWorld.addAlienObject(new Alien(100 + j*33 + dPos, 50 + i*33, width, heigth, points, filename));
 		}
 	}
-
-	// Create the barriers
+	
+	// Creates the barriers
 	for (i=0; i<2; i++) {
 		for (j=0; j<4; j++) {
 			TheWorld.addBarrierObject(new Barrier(50+j*15, TheWorld.groundLevel-80 + i*15));
@@ -508,13 +556,25 @@ $(document).ready(function() {
 			TheWorld.addBarrierObject(new Barrier(410+j*15, TheWorld.groundLevel-80 + i*15));
 		}
 	}
+};
+
+// Main event whose function controls the game
+$(document).ready(function() {
+	var context = $("#game_canvas")[0].getContext("2d");
+	var now = Date.now();
+	
+	// The cannon object
+	var cannon = new Cannon(70, TheWorld.groundLevel-22, 3, "images/cannon.png");
+	
+	// Creates all the objects and adds them to the world
+	createObjects(cannon);
 	
 	// Interval event for The World
 	window.setInterval(function() {
 		if (!TheWorld.gameIsOver) {
 			var elapsed = Date.now() - now;
 			now = Date.now();
-			TheWorld.updateAll(elapsed);
+			TheWorld.updateAll(context, elapsed);
 			TheWorld.drawAll(context);
 		}
 	}, THEWORLD_REDRAW_INTERVAL);
