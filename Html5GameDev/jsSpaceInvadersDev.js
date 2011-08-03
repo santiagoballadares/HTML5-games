@@ -93,6 +93,7 @@ Cannon.prototype = {
 		// creates new lasers - one at a time
 		if(TheWorld.cLasers.length < 1) {
 			TheWorld.addCLaserObject(new Laser(this.getLeft()+this.width/2, this.getBottom()));
+			$(shoot)[0].play();
 		}
 	},
 	
@@ -397,6 +398,8 @@ var TheWorld = {
 		for (i=0; i<this.aliens.length; i++) {
 			alien = this.aliens[i];
 			if (this.player.isTouching(alien)) {
+				$(explosion)[0].play();
+				
 				if (this.player.getLives() <= 0) {
 					this.endGame();
 				}
@@ -407,7 +410,7 @@ var TheWorld = {
 						obj = this.playerLives[j];
 					}
 					this.playerLives = stillOnScreen;
-					
+
 				}
 			}
 		}
@@ -419,6 +422,7 @@ var TheWorld = {
 					this.score += this.aliens[i].getPoints();
 					this.aliens[i].destroy();
 					this.cLasers[j].move(0, -this.canvasHeight);
+					$(invaderkilled)[0].play();
 				}
 			}
 		}
@@ -447,6 +451,8 @@ var TheWorld = {
 		for (i=0; i<this.aLasers.length; i++) {
 			laser = this.aLasers[i];
 			if (this.player.isTouching(laser)) {
+				$(explosion)[0].play();
+				
 				if (this.player.getLives() <= 0) {
 					this.endGame();
 				}
@@ -515,12 +521,12 @@ var TheWorld = {
 		// console.log("max"+minTime);
 		// console.log("min"+maxTime);
 		// if (time >= minTime && time <= maxTime) {
-			// if (this.aliens.length > 0) {
-				// if (this.aLasers.length < 1) {
-					// i = Math.floor(Math.random() * this.aliens.length + 1);
-					// this.addALaserObject(new Laser(this.aliens[i].getLeft() + this.aliens[i].width / 2, this.aliens[i].getBottom()));
-				// }
-			// }
+			if (this.aliens.length > 0) {
+				if (this.aLasers.length < 1) {
+					i = Math.floor(Math.random() * this.aliens.length + 1);
+					this.addALaserObject(new Laser(this.aliens[i].getLeft() + this.aliens[i].width / 2, this.aliens[i].getBottom()));
+				}
+			}
 			// time = 0;
 		// }
 		
