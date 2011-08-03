@@ -10,13 +10,13 @@ const SPACE_BAR = 32;		// fire
 const SKY_COLOR = "#1F1F1F";
 const GROUND_COLOR = "#1A3300";
 
-const CANNON_MOV = 2;
+const CANNON_MOV = 1;
 const LASER_MOV = 10;
-const ALIENS_XMOV = 3;
+const ALIENS_XMOV = 10;
 const ALIENS_YMOV = 10;
 
 const CANNON_REDRAW_INTERVAL = 1;
-const ALIENS_REDRAW_INTERVAL = 50;
+const ALIENS_REDRAW_INTERVAL = 500;
 const THEWORLD_REDRAW_INTERVAL = 25;
 
 const BARRIER01 = "images/barrier1.png";
@@ -31,7 +31,7 @@ var spaceBarDown = false;
 
 var hFlag = "GO_RIGHT";
 var vFlag = "STAY";
-var aliens_xmov_inc = 0;
+var aliens_xmov_inc = 0.1;
 
 // Cannon object & prototype
 function Cannon(x, y, lives, filename) {
@@ -191,9 +191,22 @@ Alien.prototype = {
 
 	draw: function(ctx) {
 		if (this.imgLoaded && !this.destroyed) {
-			//var spriteOffsetX = 22 * this.animationFrame;
-			// ctx.drawImage(this.img, spriteOffsetX, 0, 22, 16, this.x, this.y, 22, 16);
-			ctx.drawImage(this.img, this.x, this.y, this.width, this.height);
+			var spriteOffsetX;
+			switch (this.points) {
+				case 10:
+					spriteOffsetX = 24 * this.animationFrame;
+					ctx.drawImage(this.img, spriteOffsetX, 0, 24, 16, this.x, this.y, 24, 16);
+				break;
+				case 20:
+					spriteOffsetX = 22 * this.animationFrame;
+					ctx.drawImage(this.img, spriteOffsetX, 0, 22, 16, this.x, this.y, 22, 16);
+				break;
+				case 40:
+					spriteOffsetX = 16 * this.animationFrame;
+					ctx.drawImage(this.img, spriteOffsetX, 0, 16, 16, this.x, this.y, 16, 16);
+				break;
+			}
+			//ctx.drawImage(this.img, this.x, this.y, this.width, this.height);
 		}
 	},
 
@@ -202,7 +215,7 @@ Alien.prototype = {
 	},
 
 	move: function(dx, dy) {
-		// this.animationFrame = (this.animationFrame + 1) % 2;
+		this.animationFrame = (this.animationFrame + 1) % 2;
 		this.x += dx;
 		this.y += dy;
 	},
@@ -313,6 +326,8 @@ var TheWorld = {
 	
 	totalMs: 0,
 	
+	level: 1,
+	
 	player: null,		// player's cannon object
 	playerLives: [],	// player's lives
 	cLasers: [],		// list of cannon's lasers on canvas
@@ -349,11 +364,13 @@ var TheWorld = {
 	},
 
 	updateAll: function(ctx, elapsed) {
+		// variables
+		var i, j, laser, alien, barrier, obj, time=0, minTime, maxTime;
+		var stillOnScreen = [];
+		
 		// keep the score
 		ctx.fillStyle = "white";
 		ctx.fillText("Score: " + this.score, 50, 50);
-
-		var i, j, laser, alien, barrier;
 
 		// keep track of total survival time
 		this.totalMs += elapsed;
@@ -380,7 +397,18 @@ var TheWorld = {
 		for (i=0; i<this.aliens.length; i++) {
 			alien = this.aliens[i];
 			if (this.player.isTouching(alien)) {
-				this.endGame();
+				if (this.player.getLives() <= 0) {
+					this.endGame();
+				}
+				else {
+					this.player.destroyed();
+					
+					for (j=0; j<this.playerLives.length - 1; j++) {
+						obj = this.playerLives[j];
+					}
+					this.playerLives = stillOnScreen;
+					
+				}
 			}
 		}
 		
@@ -415,11 +443,22 @@ var TheWorld = {
 			}
 		}
 		
-		// check for collisions - end the game if the cannon is touching any alien
+		// check for collisions - end the game if the cannon is touching any aliens laser
 		for (i=0; i<this.aLasers.length; i++) {
 			laser = this.aLasers[i];
 			if (this.player.isTouching(laser)) {
-				this.endGame();
+				if (this.player.getLives() <= 0) {
+					this.endGame();
+				}
+				else {
+					this.player.destroyed();
+					
+					for (j=0; j<this.playerLives.length - 1; j++) {
+						obj = this.playerLives[j];
+					}
+					this.playerLives = stillOnScreen;
+					
+				}
 			}
 		}
 		
@@ -427,7 +466,6 @@ var TheWorld = {
 		// ##### REMOVE OLD OBJECTS #####
 		
 		// remove cannon lasers that have gone off top of canvas
-		var stillOnScreen = [];
 		for (i=0; i<this.cLasers.length; i++) {
 			laser = this.cLasers[i];
 			if (laser.getBottom() > 0) {
@@ -469,14 +507,27 @@ var TheWorld = {
 		
 		// ##### ADDS NEW OBJECTS #####
 		
-		// creates aliens lasers OJO
-		if (this.aLasers.length < 1) {
-			i = Math.floor(Math.random() * this.aliens.length + 1)
-			this.addALaserObject(new Laser(this.aliens[i].getLeft() + this.aliens[i].width / 2, this.aliens[i].getBottom()));
-		}
+		// creates aliens lasers
+		// time += elapsed;
+		// minTime = Math.floor(Math.random() * 300 + 1);
+		// maxTime = Math.floor(Math.random() * 3000 + 1);
+		// console.log("time"+time);
+		// console.log("max"+minTime);
+		// console.log("min"+maxTime);
+		// if (time >= minTime && time <= maxTime) {
+			// if (this.aliens.length > 0) {
+				// if (this.aLasers.length < 1) {
+					// i = Math.floor(Math.random() * this.aliens.length + 1);
+					// this.addALaserObject(new Laser(this.aliens[i].getLeft() + this.aliens[i].width / 2, this.aliens[i].getBottom()));
+				// }
+			// }
+			// time = 0;
+		// }
 		
 		// creates new aliens matrix
 		if (this.aliens.length < 1) {
+			this.level += 1;
+			aliens_xmov_inc = this.level * 0.1;
 			createAliensMatrix();
 		}
 	},
@@ -655,7 +706,7 @@ $(document).ready(function() {
 	var aliensMov = setInterval(function() {
 		if (!TheWorld.gameIsOver) {
 			var i;
-			
+
 			// Check the direction of the movement of the aliens based on the sides of the canvas
 			for (i=0; i<TheWorld.aliens.length; i++) {
 				if (TheWorld.aliens[i].getRight() <= TheWorld.canvasWidth && 
@@ -736,4 +787,7 @@ $(document).ready(function() {
 			spaceBarDown = false;
 		}
 	});
+
+	// Audio Background
+	$(bgm)[0].play();
 });
