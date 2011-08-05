@@ -19,6 +19,9 @@ const CANNON_REDRAW_INTERVAL = 1;
 const ALIENS_REDRAW_INTERVAL = 500;
 const THEWORLD_REDRAW_INTERVAL = 25;
 
+const ALIVE = 0;
+const DESTROYED = 1;
+
 const BARRIER01 = "images/barrier1.png";
 const BARRIER02 = "images/barrier2.png";
 const BARRIER03 = "images/barrier3.png";
@@ -150,6 +153,7 @@ Laser.prototype = {
 // Alien object & prototype
 function Alien(x, y, width, heigth, points, filename) {
 	this.destroyed = false;
+	this.canDelete = false;
 	this.x = x;
 	this.y = y;
 	this.points = points;
@@ -157,6 +161,7 @@ function Alien(x, y, width, heigth, points, filename) {
 	this.width = width;
 	this.height = heigth;
 	this.animationFrame = 0;
+	this.status = ALIVE;
 }
 Alien.prototype = {
 	imgLoaded: false,
@@ -191,23 +196,36 @@ Alien.prototype = {
 	},
 
 	draw: function(ctx) {
-		if (this.imgLoaded && !this.destroyed) {
-			var spriteOffsetX;
+		if (this.imgLoaded) {
+			var spriteOffsetX, spriteOffsetY;
+			
+			// when destroyed resets animationFrame, changes status, and canDelete flag
+			if (this.destroyed) {
+				this.animationFrame = 0;
+				this.status = DESTROYED;
+				this.canDelete = true;
+			}
+			
 			switch (this.points) {
 				case 10:
 					spriteOffsetX = 24 * this.animationFrame;
-					ctx.drawImage(this.img, spriteOffsetX, 0, 24, 16, this.x, this.y, 24, 16);
+					spriteOffsetY = 16 * this.status;
+					ctx.drawImage(this.img, spriteOffsetX, spriteOffsetY, 24, 16, this.x, this.y, 24, 16);
 				break;
 				case 20:
 					spriteOffsetX = 22 * this.animationFrame;
-					ctx.drawImage(this.img, spriteOffsetX, 0, 22, 16, this.x, this.y, 22, 16);
+					spriteOffsetY = 16 * this.status;
+					ctx.drawImage(this.img, spriteOffsetX, spriteOffsetY, 22, 16, this.x, this.y, 22, 16);
 				break;
 				case 40:
 					spriteOffsetX = 16 * this.animationFrame;
-					ctx.drawImage(this.img, spriteOffsetX, 0, 16, 16, this.x, this.y, 16, 16);
+					spriteOffsetY = 16 * this.status;
+					ctx.drawImage(this.img, spriteOffsetX, spriteOffsetY, 16, 16, this.x, this.y, 16, 16);
 				break;
 			}
-			//ctx.drawImage(this.img, this.x, this.y, this.width, this.height);
+		}
+		else if (this.destroyed) {
+			ctx.drawImage(this.img, this.x, this.y, this.width, this.height);
 		}
 	},
 
@@ -394,7 +412,28 @@ var TheWorld = {
 		
 		// ##### CHECK FOR COLLISIONS #####
 
-		// check for collisions - end the game if the cannon is touching any alien
+		// check for collisions - end the game if the cannon is touched by any aliens laser
+		for (i=0; i<this.aLasers.length; i++) {
+			laser = this.aLasers[i];
+			if (this.player.isTouching(laser)) {
+				$(explosion)[0].play();
+				
+				if (this.player.getLives() <= 0) {
+					this.endGame();
+				}
+				else {
+					this.player.destroyed();
+					
+					for (j=0; j<this.playerLives.length - 1; j++) {
+						obj = this.playerLives[j];
+					}
+					this.playerLives = stillOnScreen;
+					
+				}
+			}
+		}
+		
+		// check for collisions - end the game if the cannon is touched by any alien
 		for (i=0; i<this.aliens.length; i++) {
 			alien = this.aliens[i];
 			if (this.player.isTouching(alien)) {
@@ -447,27 +486,6 @@ var TheWorld = {
 			}
 		}
 		
-		// check for collisions - end the game if the cannon is touching any aliens laser
-		for (i=0; i<this.aLasers.length; i++) {
-			laser = this.aLasers[i];
-			if (this.player.isTouching(laser)) {
-				$(explosion)[0].play();
-				
-				if (this.player.getLives() <= 0) {
-					this.endGame();
-				}
-				else {
-					this.player.destroyed();
-					
-					for (j=0; j<this.playerLives.length - 1; j++) {
-						obj = this.playerLives[j];
-					}
-					this.playerLives = stillOnScreen;
-					
-				}
-			}
-		}
-		
 		
 		// ##### REMOVE OLD OBJECTS #####
 		
@@ -494,7 +512,7 @@ var TheWorld = {
 		stillOnScreen = [];
 		for (i=0; i<this.aliens.length; i++) {
 			alien = this.aliens[i];
-			if (!alien.destroyed) {
+			if (!alien.canDelete) {
 				stillOnScreen.push(alien);
 			}
 		}
@@ -570,6 +588,9 @@ var TheWorld = {
 		ctx.font = "12pt Arial";
 		ctx.fillStyle = "white";
 		ctx.fillText("Score: " + this.score, 35, 25);
+		
+		// The Level
+		ctx.fillText("Level: " + this.level, 240, 25);
 		
 		// The Lives
 		ctx.fillText("Lives: " , 400, 25);
@@ -776,4 +797,7 @@ $(document).ready(function() {
 			spaceBarDown = false;
 		}
 	});
+
+	// Audio Background
+	// $(bgm)[0].play();
 });
