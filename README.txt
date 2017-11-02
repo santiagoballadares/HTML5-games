@@ -1,1 +1,1 @@
-My stuff
+Simple games with HTML5 and Javascript

@@ -1,0 +1,25 @@
+<!--
+@Description: Lost Viking: Top down space shooter.
+@Autor: Santiago Balladares
+@Date: 24/04/2013
+-->
+
+<!DOCTYPE html>
+	<head>
+		<title>Lost Viking</title>
+		<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.0/jquery.min.js"></script>
+		<script src="jsLostViking.js"></script>
+	</head>
+	<body bgcolor="#33313D">
+		<center>
+			<p>L o s t   V i k i n g</p>
+			<p><span id="info">Use the arrow keys to move and space bar to shoot</span></p>
+			
+			<audio id="shoot" src="audio/shoot.wav" preload="auto" autobuffer="true"></audio>
+			<audio id="invaderkilled" src="audio/invaderkilled.wav" preload="auto" autobuffer="true"></audio>
+			<audio id="explosion" src="audio/explosion.wav" preload="auto" autobuffer="true"></audio>
+			
+			<canvas id="game_canvas" width = "450" height = "550"></canvas>
+		</center>
+	</body>
+</html>
